@@ -43,6 +43,8 @@ def _get_dados_info_adicional(info_adicional):
             extras = token.split(' ')
             cupom.placa = extras[2]
             campos += 1
+            if len(cupom.placa) <= 3 and len(extras) > 3:
+                cupom.placa += extras[3]
 
         elif campos == 4:
             extras = token.split(' ')

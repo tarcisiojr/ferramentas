@@ -51,7 +51,7 @@ def _get_dados_info_adicional(info_adicional):
             cupom.veiculo = extras[4]
             campos += 1
 
-        if token.startswith('Fatura'):
+        if token.startswith('FATURA'):
             campos = 1
     return cupom
 

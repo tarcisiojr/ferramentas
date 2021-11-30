@@ -56,9 +56,12 @@ def _get_dados_info_adicional(info_adicional):
     return cupom
 
 
-def _escanear_cupons(dir_xml, dir_saida, cli, dt_ini, dt_fim):
+def _escanear_cupons(dir_xml, dir_saida, cli, dt_ini, dt_fim, texto_like):
     total = 0
-    total_econtrado = 0
+    total_encontrado = 0
+    if not texto_like:
+        texto_like = ''
+
     with open(f'{dir_saida}{os.path.sep}saida.csv', 'w') as saida:
         saida.write(f'DATA;NRO CUPOM;PRODUTO;QUANTIDADE;VALOR UNITÁRIO;VALOR TOTAL;VEICULO;PLACA;STATUS CUPOM\n')
 
@@ -87,8 +90,9 @@ def _escanear_cupons(dir_xml, dir_saida, cli, dt_ini, dt_fim):
                 cupom_produto.quantidade = prod.getElementsByTagName('qCom')[0].firstChild.data
                 cupom_produto.valor = prod.getElementsByTagName('vProd')[0].firstChild.data
 
-                if cupom_produto.cod_cliente == cli and dt_ini <= data_emissao_original <= dt_fim:
-                    total_econtrado += 1
+                if ((cli is None and info_adicional.find(texto_like) >= 0) or (cupom_produto.cod_cliente == cli)) \
+                        and (dt_ini <= data_emissao_original <= dt_fim):
+                    total_encontrado += 1
 
                     linha = f'{cupom_produto.data};{cupom_produto.nro_cupom};{cupom_produto.produto};{cupom_produto.quantidade.replace(".", ",")};{cupom_produto.valor_unitario.replace(".", ",")};{cupom_produto.valor.replace(".", ",")};{cupom_produto.veiculo.upper()};{cupom_produto.placa.upper()};{status}'
                     saida.write(f'{linha}\n')
@@ -97,12 +101,13 @@ def _escanear_cupons(dir_xml, dir_saida, cli, dt_ini, dt_fim):
 
     print('----------- Resumo -----------')
     print(f'Total XMLs encontrados: {total}')
-    print(f'Total XMLs verificados: {total_econtrado}')
+    print(f'Total XMLs verificados: {total_encontrado}')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--cli', required=True, help='Código do cliente')
+    parser.add_argument('--cli', required=False, help='Código do cliente')
+    parser.add_argument('--termo', required=False, help='Busca por texto')
     parser.add_argument('--dt_ini', required=True, help='Data inicial de busca no formato AAAA-MM-DD')
     parser.add_argument('--dt_fim', required=True, help='Data final de busca no formato AAAA-MM-DD')
     parser.add_argument('--dir_xml', required=True, help='Diretorio onde estao localizados os XMLs de cupom fiscal')
@@ -122,7 +127,8 @@ if __name__ == '__main__':
         dir_saida=args.dir_saida,
         cli=args.cli,
         dt_ini=args.dt_ini,
-        dt_fim=args.dt_fim
+        dt_fim=args.dt_fim,
+        texto_like=args.termo
     )
 
     print('------ Fim de execucao -------')

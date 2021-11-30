@@ -61,7 +61,7 @@ def _escanear_cupons(dir_xml, dir_saida, cli, dt_ini, dt_fim, texto_like):
     total_encontrado = 0
     if not texto_like:
         texto_like = ''
-
+    texto_like = texto_like.upper()
     with open(f'{dir_saida}{os.path.sep}saida.csv', 'w') as saida:
         saida.write(f'DATA;NRO CUPOM;PRODUTO;QUANTIDADE;VALOR UNITÁRIO;VALOR TOTAL;VEICULO;PLACA;STATUS CUPOM\n')
 
@@ -69,6 +69,8 @@ def _escanear_cupons(dir_xml, dir_saida, cli, dt_ini, dt_fim, texto_like):
             root = minidom.parse(arquivo_xml)
             nro_cupom = root.getElementsByTagName('nNF')[0].firstChild.data
             info_adicional = root.getElementsByTagName('infCpl')[0].firstChild.data
+            if info_adicional:
+                info_adicional = info_adicional.upper()
             data_emissao_original = root.getElementsByTagName('dhEmi')[0].firstChild.data.split('T')[0]
             data_emissao_formatada = "/".join(data_emissao_original.split('-')[::-1])
 

@@ -60,6 +60,8 @@ def _escanear_cupons(dir_xml, dir_saida, cli, dt_ini, dt_fim):
     total = 0
     total_econtrado = 0
     with open(f'{dir_saida}{os.path.sep}saida.csv', 'w') as saida:
+        saida.write(f'DATA;NRO CUPOM;PRODUTO;QUANTIDADE;VALOR UNITÁRIO;VALOR TOTAL;VEICULO;PLACA;STATUS CUPOM\n')
+
         for arquivo_xml in glob.iglob(f'{dir_xml}{os.path.sep}**{os.path.sep}*-nfe.xml', recursive=True):
             root = minidom.parse(arquivo_xml)
             nro_cupom = root.getElementsByTagName('nNF')[0].firstChild.data
@@ -71,6 +73,13 @@ def _escanear_cupons(dir_xml, dir_saida, cli, dt_ini, dt_fim):
             cupom.nro_cupom = nro_cupom
             cupom.data = data_emissao_formatada
 
+            status = "NORMAL"
+            xml_cancelamento = arquivo_xml.replace("-nfe.xml", "-NFeDFe.xml")
+            if os.path.isfile(xml_cancelamento):
+                with open(xml_cancelamento) as f:
+                    if 'Cancelamento de NF-e homologado' in f.read():
+                        status = "CANCELADO"
+
             for prod in root.getElementsByTagName('prod'):
                 cupom_produto = dataclasses.replace(cupom)
                 cupom_produto.produto = prod.getElementsByTagName('xProd')[0].firstChild.data
@@ -80,7 +89,8 @@ def _escanear_cupons(dir_xml, dir_saida, cli, dt_ini, dt_fim):
 
                 if cupom_produto.cod_cliente == cli and dt_ini <= data_emissao_original <= dt_fim:
                     total_econtrado += 1
-                    linha = f'{cupom_produto.data};{cupom_produto.nro_cupom};{cupom_produto.produto};{cupom_produto.quantidade.replace(".", ",")};{cupom_produto.valor_unitario.replace(".", ",")};{cupom_produto.valor.replace(".", ",")};{cupom_produto.veiculo.upper()};{cupom_produto.placa.upper()}'
+
+                    linha = f'{cupom_produto.data};{cupom_produto.nro_cupom};{cupom_produto.produto};{cupom_produto.quantidade.replace(".", ",")};{cupom_produto.valor_unitario.replace(".", ",")};{cupom_produto.valor.replace(".", ",")};{cupom_produto.veiculo.upper()};{cupom_produto.placa.upper()};{status}'
                     saida.write(f'{linha}\n')
                     print(linha)
             total += 1

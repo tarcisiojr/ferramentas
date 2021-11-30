@@ -110,17 +110,18 @@ if __name__ == '__main__':
     parser.add_argument('--termo', required=False, help='Busca por texto')
     parser.add_argument('--dt_ini', required=True, help='Data inicial de busca no formato AAAA-MM-DD')
     parser.add_argument('--dt_fim', required=True, help='Data final de busca no formato AAAA-MM-DD')
-    parser.add_argument('--dir_xml', required=True, help='Diretorio onde estao localizados os XMLs de cupom fiscal')
-    parser.add_argument('--dir_saida', required=True, help='Diretorio de saida do resultado')
+    parser.add_argument('--dir_xml', required=True, help='Diretório onde estão localizados os XMLs de cupom fiscal')
+    parser.add_argument('--dir_saida', required=True, help='Diretório de saida do resultado')
     args = parser.parse_args()
 
-    print('Escanenando cupons...')
-    print(f'Cliente: {args.cli}')
-    print(f'Periodo: {args.dt_ini} a {args.dt_fim}')
-    print(f'Diretorio XMLs: {args.dir_xml}')
-    print(f'Diretorio saida: {args.dir_saida}')
+    print('Escaneando cupons...')
+    print(f'Cliente........: {args.cli}')
+    print(f'Termo..........: {args.termo}')
+    print(f'Período........: {args.dt_ini} a {args.dt_fim}')
+    print(f'Diretório XMLs.: {args.dir_xml}')
+    print(f'Diretório saida: {args.dir_saida}')
     print('')
-    print('------ Log de execucao -------')
+    print('------ Log de execução -------')
 
     _escanear_cupons(
         dir_xml=args.dir_xml,
@@ -131,4 +132,4 @@ if __name__ == '__main__':
         texto_like=args.termo
     )
 
-    print('------ Fim de execucao -------')
+    print('------ Fim de execução -------')

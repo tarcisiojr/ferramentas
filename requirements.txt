@@ -1,0 +1,5 @@
+google-api-python-client==2.33.0
+google-auth-httplib2==0.1.0
+google-auth-oauthlib==0.4.6
+gspread==5.0.0
+PyDrive==1.3.1

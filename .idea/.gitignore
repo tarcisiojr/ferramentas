@@ -1,0 +1,8 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+data
+saida.csv
+token.json
+credentials.json
+config.json

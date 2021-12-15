@@ -1,3 +1,4 @@
+import datetime
 import glob
 import os
 from xml.dom import minidom
@@ -52,10 +53,12 @@ def _get_coupon_status(xml_file):
     return status
 
 
-def _get_coupons_of_xml_files():
+def _get_coupons_of_xml_files(dir_date):
     xmls_dir = config.get_config('XMLS_DIR')
 
-    for xml_file in glob.iglob(f'{xmls_dir}{os.path.sep}**{os.path.sep}*-nfe.xml', recursive=True):
+    for xml_file in glob.iglob(f'{xmls_dir}{os.path.sep}**{os.path.sep}{dir_date}{os.path.sep}*-nfe.xml', recursive=True):
+        print(f'=> file {xml_file}')
+
         root = minidom.parse(xml_file)
 
         aditional_info = (root.getElementsByTagName('infCpl')[0].firstChild.data or '').upper()
@@ -86,7 +89,16 @@ def _get_coupons_of_xml_files():
         yield coupon
 
 
-def find_coupons_greater_than(coupon_number, status='NORMAL'):
-    for coupon in _get_coupons_of_xml_files():
-        if int(coupon.id) > int(coupon_number) and status == coupon.status:
+def find_coupons_from(str_date: str, status='NORMAL'):
+    for coupon in _get_coupons_of_xml_files(str_date):
+        if status == coupon.status:
             yield coupon
+
+
+def get_scan_start_date():
+    return config.get_config('START_SCAN_AT')
+
+
+def commit_processed_date(str_date):
+    config.write_config('START_SCAN_AT', str_date)
+

@@ -1,5 +1,8 @@
 from __future__ import print_function
 
+import socket
+socket.setdefaulttimeout(4000)
+
 from business.accounts_receivable import sync_acount_receivables
 
 

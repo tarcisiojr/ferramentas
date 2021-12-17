@@ -22,8 +22,8 @@ SCOPES = [
 _credentials = ContextVar("credentials", default=None)
 _cache_summary = ContextVar("cache_summart", default=[])
 _cache_summary_header = ContextVar("_cache_summary_header", default={})
-_ratelimit_read = RatelimitControl('read', 20)
-_ratelimit_write = RatelimitControl('write', 10)
+_ratelimit_read = RatelimitControl('read', 40)
+_ratelimit_write = RatelimitControl('write', 40)
 
 
 SPREADSHEET_NAME_SUMMARY = "SUMMARY"
@@ -38,6 +38,7 @@ def _lock(read_ops=0, write_ops=0):
 
 def _create_credentials():
     print('=> autenticando no Google')
+    _lock(read_ops=2)
     creds = None
     # The file token.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
@@ -70,7 +71,7 @@ def _get_spreadsheet_id(name: str) -> str:
 
 
 def _get_spreadsheet_by_fileid(fileid):
-    _lock(read_ops=1)
+    _lock(read_ops=2)
     gc = gspread.authorize(_get_credentials())
     return gc.open_by_key(fileid)
 
@@ -104,6 +105,7 @@ def _get_last_row(sheet, cols_to_sample=1):
 
 
 def _create_col_index(worksheet):
+    _lock(read_ops=1)
     values = worksheet.row_values(1)
     index = {}
     for i in range(0, len(values)):
@@ -113,6 +115,7 @@ def _create_col_index(worksheet):
 
 def _get_col_index_from_sumary_header(col_name):
     if not _cache_summary_header.get().get(col_name):
+        _lock(read_ops=1)
         spreadsheet = _get_spreadsheet(SPREADSHEET_NAME_SUMMARY)
         worksheet = spreadsheet.worksheet('RESUMO')
         index = _create_col_index(worksheet)
@@ -160,6 +163,7 @@ def _append_copied_row(spreadsheet, row, total_cols):
 def _get_sheet_data_of(coupon: Coupon):
     fileid = _get_fileid_of_customer(coupon.customer_id)
     spreadsheet = _get_spreadsheet_by_fileid(fileid)
+    _lock(read_ops=1)
     worksheet = spreadsheet.worksheet('CONTAS-A-PAGAR')
     return spreadsheet, worksheet
 
@@ -168,6 +172,7 @@ def create_account_receivable_for_customer(customer_id: str = '', customer_name:
     file = _create_customer_ar_from_template(customer_id, customer_name)
 
     spreadsheet = _get_spreadsheet(SPREADSHEET_NAME_SUMMARY)
+    _lock(read_ops=1)
     worksheet = spreadsheet.worksheet('RESUMO')
 
     col_index = _create_col_index(worksheet)

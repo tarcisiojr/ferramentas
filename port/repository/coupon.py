@@ -1,4 +1,3 @@
-import datetime
 import glob
 import json
 import os
@@ -116,13 +115,13 @@ def get_readed_coupon_ids():
     return _readed_coupons.get()
 
 
-def mark_as_readed(coupon: Coupon):
-    _readed_coupons.set(get_readed_coupon_ids() + [coupon.id])
+def mark_as_readed(coupons_ids):
+    _readed_coupons.set(get_readed_coupon_ids() + coupons_ids)
 
     with open('./cupons.json', 'w') as file:
         json.dump(_readed_coupons.get() or [], file)
 
-    print(f'=> marcado cupom {coupon.id} como lido!')
+    print(f'=> marcado {len(coupons_ids)} cupons como lido!')
 
 
 def is_already_readed(coupon: Coupon) -> bool:

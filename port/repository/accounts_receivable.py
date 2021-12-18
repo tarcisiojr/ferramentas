@@ -22,13 +22,17 @@ SCOPES = [
 _credentials = ContextVar("credentials", default=None)
 _cache_summary = ContextVar("cache_summart", default=[])
 _cache_summary_header = ContextVar("_cache_summary_header", default={})
-_ratelimit_read = RatelimitControl('read', 35)
-_ratelimit_write = RatelimitControl('write', 35)
+_ratelimit_read = RatelimitControl('read', 55)
+_ratelimit_write = RatelimitControl('write', 50)
+_rows_buffer = ContextVar('rows_buffer', default=[])
+_spreadsheet = ContextVar('spreadsheet', default={})
 
 
 SPREADSHEET_NAME_SUMMARY = "SUMMARY"
 SPREADSHEET_NAME_TEMPLATE = "TEMPLATE"
 SPREADSHEET_FOLDER = "CUSTOMER_FOLDER"
+
+BUFFER_ROWS_SIZE = 50
 
 
 def _lock(read_ops=0, write_ops=0):
@@ -132,22 +136,22 @@ def _get_fileid_of_customer(customer_id) -> str:
     return None
 
 
-def _append_copied_row(spreadsheet, row, total_cols):
+def _append_copied_row(spreadsheet, row_from, row_to, total_cols):
     body = {
         "requests": [
             {
                 "copyPaste": {
                     "source": {
                         "sheetId": 0,
-                        "startRowIndex": row - 1,
-                        "endRowIndex": row,
+                        "startRowIndex": row_from,
+                        "endRowIndex": row_from + 1,
                         "startColumnIndex": 0,
                         "endColumnIndex": total_cols
                     },
                     "destination": {
                         "sheetId": 0,
-                        "startRowIndex": row,
-                        "endRowIndex": row + 1,
+                        "startRowIndex": row_to,
+                        "endRowIndex": row_to + 1,
                         "startColumnIndex": 0,
                         "endColumnIndex": total_cols
                     },
@@ -157,6 +161,33 @@ def _append_copied_row(spreadsheet, row, total_cols):
         ]
     }
     _lock(write_ops=1)
+    spreadsheet.batch_update(body)
+
+
+def _copy_formulas(spreadsheet, row_from, row_to, total_rows, col_from, col_to):
+    body = {
+        "requests": [
+            {
+                "copyPaste": {
+                    "source": {
+                        "sheetId": 0,
+                        "startRowIndex": row_from,
+                        "endRowIndex": row_from + 1,
+                        "startColumnIndex": col_from,
+                        "endColumnIndex": col_to
+                    },
+                    "destination": {
+                        "sheetId": 0,
+                        "startRowIndex": row_to,
+                        "endRowIndex": row_to + total_rows,
+                        "startColumnIndex": col_from,
+                        "endColumnIndex": col_to
+                    },
+                    "pasteType": "PASTE_NORMAL"
+                }
+            }
+        ]
+    }
     spreadsheet.batch_update(body)
 
 
@@ -179,7 +210,7 @@ def create_account_receivable_for_customer(customer_id: str = '', customer_name:
     last_row = _get_last_row(worksheet)
     total_cols = len(col_index.keys())
 
-    _append_copied_row(spreadsheet, last_row, total_cols)
+    _append_copied_row(spreadsheet, last_row - 1, last_row, total_cols)
 
     _lock(write_ops=3)
     worksheet.update_cell(last_row + 1, col_index.get('ID PLANILHA') + 1, file.get('id'))
@@ -189,34 +220,73 @@ def create_account_receivable_for_customer(customer_id: str = '', customer_name:
     _cache_summary.set([])
 
 
-def exists_account_receivable_for(coupon: Coupon) -> bool:
+def exists_account_receivable_for_v1(coupon: Coupon) -> bool:
     _lock(read_ops=2)
     spreadsheet, worksheet = _get_sheet_data_of(coupon)
     return worksheet.find(coupon.id, in_column=2) is not None
 
 
-def save_account_receivable(coupon: Coupon):
+def _get_ar_spreadsheet():
+    if not _spreadsheet.get().get('spreadsheet'):
+        _lock(read_ops=2)
+        spreadsheet = _get_spreadsheet_by_fileid(config.get_config('ACCOUNT_RECEIVABLE_SPREADSHEET'))
+        worksheet = spreadsheet.worksheet('CONTAS-A-RECEBER')
+        _spreadsheet.set({'spreadsheet': spreadsheet, 'worksheet': worksheet})
+
+    return _spreadsheet.get().get('spreadsheet'), _spreadsheet.get().get('worksheet')
+
+
+def exists_account_receivable_for(coupon: Coupon) -> bool:
+    _, worksheet = _get_ar_spreadsheet()
+    _lock(read_ops=1)
+    return worksheet.find(coupon.id, in_column=2) is not None or [1 for row in _rows_buffer.get() if row[1] == coupon.id]
+
+
+def save_account_receivable_v1(coupon: Coupon):
     spreadsheet, worksheet = _get_sheet_data_of(coupon)
 
     col_index = _create_col_index(worksheet)
     last_row = _get_last_row(worksheet)
     total_cols = len(col_index.keys())
 
-    _append_copied_row(spreadsheet, last_row, total_cols)
+    _append_copied_row(spreadsheet, last_row - 1, last_row, total_cols)
 
     _lock(write_ops=4)
     worksheet.update_cell(last_row+1, col_index.get('DATA')+1, coupon.date)
     worksheet.update_cell(last_row + 1, col_index.get('CUPOM') + 1, coupon.id)
     worksheet.update_cell(last_row + 1, col_index.get('VALOR TOTAL') + 1, coupon.total)
     worksheet.update_cell(last_row + 1, col_index.get('DT PAGTO') + 1, '')
+    # worksheet.append_rows()
 
 
 def exists_account(customer_id):
     values = _get_cache_summary()
     for i in range(1, len(values)):
-        # print(values[i][_get_col_index_from_sumary_header('ID CLIENTE')])
         if values[i][_get_col_index_from_sumary_header('ID CLIENTE')] == customer_id:
             return True
     return False
 
+
+def flush_pending_savings():
+    if not len(_rows_buffer.get()):
+        return []
+
+    spreadsheet, worksheet = _get_ar_spreadsheet()
+    last_row = _get_last_row(worksheet)
+
+    _lock(write_ops=2)
+    worksheet.append_rows(_rows_buffer.get())
+    _copy_formulas(spreadsheet, 1, last_row, len(_rows_buffer.get()), 5, 11)
+    _rows_buffer.set([])
+    return [row[1] for row in _rows_buffer.get()]
+
+
+def save_account_receivable(coupon: Coupon):
+    if len(_rows_buffer.get()) < BUFFER_ROWS_SIZE:
+        _rows_buffer.set(_rows_buffer.get() + [
+            [coupon.date, coupon.id, coupon.customer_id, coupon.customer_name, coupon.total]
+        ])
+        return []
+
+    return flush_pending_savings()
 

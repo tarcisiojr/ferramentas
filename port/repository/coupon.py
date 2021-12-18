@@ -1,10 +1,14 @@
 import datetime
 import glob
+import json
 import os
+from contextvars import ContextVar
 from xml.dom import minidom
 
 from domain.domains import Coupon, CouponProduct
 from port.repository import config
+
+_readed_coupons = ContextVar("readed_coupons", default=[])
 
 
 def _parse_aditional_info(aditional_info):
@@ -101,4 +105,26 @@ def get_scan_start_date():
 
 def commit_processed_date(str_date):
     config.write_config('START_SCAN_AT', str_date)
+
+
+def get_readed_coupon_ids():
+    if not _readed_coupons.get():
+        if os.path.exists('./cupons.json'):
+            with open('./cupons.json') as file:
+                coupons = json.load(file)
+                _readed_coupons.set(coupons or [])
+    return _readed_coupons.get()
+
+
+def mark_as_readed(coupon: Coupon):
+    _readed_coupons.set(get_readed_coupon_ids() + [coupon.id])
+
+    with open('./cupons.json', 'w') as file:
+        json.dump(_readed_coupons.get() or [], file)
+
+    print(f'=> marcado cupom {coupon.id} como lido!')
+
+
+def is_already_readed(coupon: Coupon) -> bool:
+    return coupon.id in get_readed_coupon_ids()
 

@@ -22,8 +22,8 @@ SCOPES = [
 _credentials = ContextVar("credentials", default=None)
 _cache_summary = ContextVar("cache_summart", default=[])
 _cache_summary_header = ContextVar("_cache_summary_header", default={})
-_ratelimit_read = RatelimitControl('read', 40)
-_ratelimit_write = RatelimitControl('write', 40)
+_ratelimit_read = RatelimitControl('read', 35)
+_ratelimit_write = RatelimitControl('write', 35)
 
 
 SPREADSHEET_NAME_SUMMARY = "SUMMARY"

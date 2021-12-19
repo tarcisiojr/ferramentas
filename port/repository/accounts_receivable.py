@@ -276,7 +276,7 @@ def flush_pending_savings():
 
     _lock(write_ops=2)
     worksheet.append_rows(_rows_buffer.get())
-    _copy_formulas(spreadsheet, 1, last_row, len(_rows_buffer.get()), 5, 11)
+    _copy_formulas(spreadsheet, 1, last_row, len(_rows_buffer.get()), 5, 13)
     _rows_buffer.set([])
     return [row[1] for row in _rows_buffer.get()]
 
